@@ -9,14 +9,22 @@ HSBoard::HSBoard(Print &print) {
 
 void HSBoard::initSTA(char *ssid, char *pass) {
 
+RECON:
+
   printer->printf("[INFO] - Conectando em %s com a senha %s\n", ssid, pass);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, pass);
 
+  int counter = 0;
+  
   while (WiFi.status() != WL_CONNECTED) {
     delay(50);
     printer->print(".");
+    counter++;
+
+    if (counter >= 100)
+      goto RECON;
   }
 
   printer->println("");
