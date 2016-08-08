@@ -1,5 +1,6 @@
 #include "HSBoard.h"
 #include "EEConfig.h"
+#include "FSConfig.h"
 
 HSBoard::HSBoard(Print &print) {
 
@@ -12,7 +13,8 @@ void HSBoard::initSTA(char *ssid, char *pass) {
 RECON:
 
   printer->printf("[INFO] - Conectando em %s com a senha %s\n", ssid, pass);
-
+  
+  WiFi.disconnect();
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, pass);
 
@@ -24,9 +26,13 @@ RECON:
     counter++;
 
     if (counter >= 100)
-      goto RECON;
+      break;    
   }
 
+  if (WiFi.status() != WL_CONNECTED) {
+    goto RECON;
+  }
+  
   printer->println("");
   String ip = WiFi.localIP().toString();
   printer->printf("[INFO] - Conectado em WiFi %s com IP %s\n", ssid, ip.c_str());
@@ -78,20 +84,17 @@ void HSBoard::manageClientReq(WiFiClient *client, String req) {
     
     if (hs.getType() == 'g') { //getinfo
 
-      printer->print("recebido getinfo: ");
-      printer->println(req.c_str());
-      sendEEConf(client);      
-      printer->println("getinfo enviado para o commander");
+      printer->print("recebido getinfo. enviando getinfo para o commander...");      
+      sendEEConf(client);   
+      printer->println("getinfo enviado para o commander!");
 
     } else if (hs.getType() == 's') { //setinfo
 
-      printer->print("recebido setinfo: ");
-      printer->println(req.c_str());
-      HSTokerConf conf((char*)req.c_str());
-      setEEConf(&conf);
+      printer->print("recebido setinfo. salvando no fs...");
+      setEEConf(req.c_str());
       printer->println("setinfo salvo na EEPROM");
       sendEEConf(client);
-      printer->println("getinfo enviado para o commander");
+      printer->println("getinfo enviado para o commander; reiniciando esp-03, bye!");
 
       ESP.restart();
       
@@ -103,15 +106,14 @@ void HSBoard::manageClientReq(WiFiClient *client, String req) {
     
     } else if (hs.getType() == 'z') {
 
-      //printer->println("getinfo enviado para o commander");
-      EEConfig ee;
-      ee.zerofill();
-      
-      printer->println("EEPROM zerada!");
-      
-      ESP.restart();
-      
-
+      printer->println("Recebido comando para formatar o FS");
+      FSConfig fs;
+      fs.init();
+      fs.format();
+      client->print("FileSystem do sensor formatado com sucesso!");
+      printer->println("FileSystem formatado! Reiniciando ESP03.... bye!");
+           
+      ESP.restart();      
     }
       
 }
@@ -150,95 +152,34 @@ void HSBoard::initServer(void) {
 
 void HSBoard::sendEEConf(WiFiClient *client) {
 
-    EEConfig p;
-    char buff[32];
+    FSConfig fs;
+    char buff[255];
 
-    p.getId(buff);
+    fs.init();
+    fs.getId(buff);
+
     int id = atoi(buff);
     if (id < 1) { //virgem
-
-      client->print("getinfo:-1:-2:-3:-4,-5:-1:-2,-3:-3,-4:\n");
+      client->print("getinfo:-1:-2:-3:-4,-5:-1:-2,-3:-3,-4:\n");      
       return;
     }
 
-  String msg = "getinfo:";
-  
-  //  client->print("getinfo:");
-
-    p.getTitle(buff);
-    msg+=buff;
-    msg+=":";
-    //client->print(buff);
-    //client->print(":");
-
-    p.getSSID(buff);     
-    msg+=buff;
-    msg+=":";
-    //client->print(buff);
-    //client->print(":");
-
-    p.getPass(buff);
-    msg+=buff;
-    msg+=":";
-    //client->print(buff);
-    //client->print(":");
-
-    p.getAmbiente(buff);
-    msg+=buff;
-    msg+=":";
-    //client->print(buff);
-    //client->print(":");
-
-    p.getId(buff);
-    msg+=buff;
-    msg+=":";
-    //client->print(buff);
-    //client->print(":");
-
-    p.getCarga(buff, 1);
-    msg+=buff;
-    msg+=":";
-    //client->print(buff);
-    //client->print(":");
-
-    p.getCarga(buff, 2);
-    msg+=buff;
-    msg+=":";
-    msg+="\n";
-    //client->print(buff);
-    //client->print(":\n");    
-
-    client->print(msg);
-
+    fs.getConfig(buff);
+    buff[0] = 'g';
+    printer->printf("getinfo recuperado de fs: %s\n", buff);    
+    
+    client->printf("%s\n", buff);
 }
 
 
-void HSBoard::setEEConf(HSTokerConf *conf) {  
+void HSBoard::setEEConf(const char *req) {  
 
-    EEConfig ee;
+  FSConfig fs;
 
-    char buff[32];
-    if (conf->getTitle(buff)) 
-      ee.setTitle(buff);
-    
+  fs.init();
+  fs.setConfig(req);
 
-    if (conf->getSSID(buff)) 
-      ee.setSSID(buff);   
-
-    if (conf->getPass(buff)) 
-      ee.setPass(buff);
-
-    if (conf->getAmbiente(buff))
-      ee.setAmbiente(buff);
-
-    if (conf->getId(buff)) 
-      ee.setId(buff);
-
-    if (conf->getCarga(buff, 1)) 
-      ee.setCarga(buff, 1);
-    
-    if (conf->getCarga(buff, 2)) 
-      ee.setCarga(buff, 2);    
+  printer->printf("getinfo salvo em fs: %s\n", req);
 }
 
 

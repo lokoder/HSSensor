@@ -20,7 +20,7 @@ private:
   void manageClientReq(WiFiClient *client, String req);
   void executeCommand(HSTokerCmd *cmd);
   void sendEEConf(WiFiClient *client);
-  void setEEConf(HSTokerConf *conf);  
+  void setEEConf(const char *req);  
 
   String ipToString(IPAddress ip);  
   Print *printer;
