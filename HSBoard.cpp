@@ -5,6 +5,14 @@
 HSBoard::HSBoard(Print &print) {
 
   printer = &print;
+  pin12 = false;
+  pin14 = false;
+
+  pinMode(12, OUTPUT);
+  pinMode(14, OUTPUT);
+  digitalWrite(12, 0);
+  digitalWrite(12, 0);
+  
 }
 
 
@@ -56,7 +64,12 @@ void HSBoard::initAP(char *ssid) {
 
 void HSBoard::executeCommand(HSTokerCmd *cmd) {
 
-  pinMode(cmd->getPin(), OUTPUT);
+  //pinMode(cmd->getPin(), OUTPUT);
+  if (cmd->getPin() == 12)
+    setPin12(cmd->getValue());
+  else if (cmd->getPin() == 14)
+    setPin14(cmd->getValue());
+    
   digitalWrite(cmd->getPin(), cmd->getValue());  
 }
 
@@ -87,10 +100,12 @@ void HSBoard::manageClientReq(WiFiClient *client, String req) {
       printer->print("recebido getinfo. enviando getinfo para o commander...");      
       sendEEConf(client);   
       printer->println("getinfo enviado para o commander!");
+      
 
     } else if (hs.getType() == 's') { //setinfo
 
       printer->print("recebido setinfo. salvando no fs...");
+      
       setEEConf(req.c_str());
       printer->println("setinfo salvo na EEPROM");
       sendEEConf(client);
@@ -107,13 +122,29 @@ void HSBoard::manageClientReq(WiFiClient *client, String req) {
     } else if (hs.getType() == 'z') {
 
       printer->println("Recebido comando para formatar o FS");
-      FSConfig fs;
-      fs.init();
-      fs.format();
+      FSConfig fsw;
+      fsw.init();
+      fsw.format();
+      fsw.close();
+      
       client->print("FileSystem do sensor formatado com sucesso!");
       printer->println("FileSystem formatado! Reiniciando ESP03.... bye!");
            
-      ESP.restart();      
+      ESP.restart(); 
+           
+    } else if (hs.getType() == 'p') {
+
+      printer->print("Recebido comando pininfo\n");
+
+      String pin12 = getPin12() ? "1": "0";
+      String pin14 = getPin14() ? "1": "0";
+      
+      String cmd = "pininfo:12," + pin12 + ":14," + pin14 + ":";
+
+      printer->printf("comando pininfo a ser enviado: %s\n", cmd.c_str());
+      client->print(cmd+"\n");
+      printer->printf("pininfo enviado!");
+      
     }
       
 }
@@ -152,11 +183,11 @@ void HSBoard::initServer(void) {
 
 void HSBoard::sendEEConf(WiFiClient *client) {
 
-    FSConfig fs;
+    FSConfig fsy;
     char buff[255];
 
-    fs.init();
-    fs.getId(buff);
+    fsy.init();
+    fsy.getId(buff);
 
     int id = atoi(buff);
     if (id < 1) { //virgem
@@ -164,9 +195,12 @@ void HSBoard::sendEEConf(WiFiClient *client) {
       return;
     }
 
-    fs.getConfig(buff);
+
+    fsy.getConfig(buff);
+    fsy.close();
+    
     buff[0] = 'g';
-    printer->printf("getinfo recuperado de fs: %s\n", buff);    
+    //printer->printf("getinfo recuperado de fs: %s\n", buff);    
     
     client->printf("%s\n", buff);
 }
@@ -174,13 +208,42 @@ void HSBoard::sendEEConf(WiFiClient *client) {
 
 void HSBoard::setEEConf(const char *req) {  
 
-  FSConfig fs;
+  printer->printf("entrou em setEEConf...\n");
+  FSConfig fsx;
 
-  fs.init();
-  fs.setConfig(req);
+  printer->printf("criou FSConfig...\n");
+  
+  fsx.init();
+  printer->printf("passou init...\n");
+  
+  fsx.setConfig(req);
+  printer->printf("chamou fs.setConfig...\n");
+  fsx.close();
 
-  printer->printf("getinfo salvo em fs: %s\n", req);
+  printer->printf("setinfo salvo em fs: %s\n", req);
 }
 
 
+
+
+void HSBoard::setPin12(int state) {
+
+  pin12 = state;
+}
+
+
+void HSBoard::setPin14(int state) {
+
+  pin14 = state;
+}
+
+
+int HSBoard::getPin12() {
+  return pin12;
+}
+
+
+int HSBoard::getPin14() {
+  return pin14;
+}
 

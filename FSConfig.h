@@ -1,3 +1,6 @@
+#ifndef FSCONFIG_H
+#define FSCONFIG_H
+
 #include <ESP8266WiFi.h>
 
 class FSConfig {
@@ -5,6 +8,7 @@ class FSConfig {
 public:
   
   FSConfig();
+  FSConfig(Print &print);
 
   bool init();
   
@@ -25,6 +29,7 @@ public:
 
 private:
 
+  Print *printer;
   
   char *filepath = "hs.conf";
   char buffer[256];
@@ -33,7 +38,9 @@ private:
   
   bool validateMessage(char *message);
   int strlen(char *buffer);  
+  bool updateConf();
 
 };
 
 
+#endif

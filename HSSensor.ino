@@ -10,6 +10,28 @@ void setup() {
 
   Serial.begin(115200);
   Serial.printf("[INFO] - ESP-03 inicializado\n");
+
+
+  /*FSConfig fs(Serial);
+  if (fs.init()) {
+    Serial.println("FS Inicializado..");
+  } else {
+    Serial.println("Problemas com fs.init()");
+  }
+
+  char buff[255] = {0};
+
+  //char *conf = "setinfo:rack:ap36:ap36erick:1,Sala:1:led,12:led,14:";
+  //fs.setConfig(conf);  
+  fs.getConfig(buff);
+
+  //Serial.println(buff);
+
+ fs.close();*/
+
+
+
+
   
   FSConfig fs;
   HSBoard board(Serial);
@@ -21,11 +43,9 @@ void setup() {
   else
     Serial.println("Problemas com fs.init()");
 
-    //fs.format();
-    
-  
   len = fs.getSSID(ssid);
   if (!len) {
+    fs.close();
     Serial.printf("[INFO] - No SSID. Ativando modo AP..\n");
     board.initAP("rede hackstyle");    
   }
@@ -34,6 +54,8 @@ void setup() {
   if (!len) {
     Serial.printf("[INFO] - No Pass. A rede %s é aberta?\n", ssid);
   }
+
+  fs.close();
   
   board.initSTA(ssid, pass);
   

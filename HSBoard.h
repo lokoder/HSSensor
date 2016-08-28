@@ -4,6 +4,7 @@
 #include <ESP8266WiFi.h>
 #include "HSTokerCmd.h"
 #include "HSTokerConf.h"
+#include "FSConfig.h"
 
 class HSBoard {
 
@@ -13,6 +14,11 @@ public:
   
   void initAP(char *ssid);
   void initSTA(char *ssid, char *pass);
+
+  void setPin12(int active);
+  void setPin14(int active);
+  int getPin12();
+  int getPin14();
 
 private:
 
@@ -24,6 +30,9 @@ private:
 
   String ipToString(IPAddress ip);  
   Print *printer;
+
+  int pin12, pin14;
+  
 };
 
 #endif

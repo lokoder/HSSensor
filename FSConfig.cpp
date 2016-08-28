@@ -4,7 +4,20 @@
 
 
 FSConfig::FSConfig() {
+
+  for (int i=0; i<256; i++) {
+    buffer[i] = '\0';
+  }
+  init();
 }
+
+
+FSConfig::FSConfig(Print &print) {
+
+  printer = &print;
+  init();
+}
+
 
 bool FSConfig::init() {
   
@@ -12,20 +25,34 @@ bool FSConfig::init() {
   if (!ret) {    
     return false;
   }
+  
+  //atualiza buffer
+  updateConf();
+   
+  return true; 
+}
+
+
+bool FSConfig::updateConf() {
 
   File arq = SPIFFS.open(filepath, "a+"); //se nao existir, cria...
   if (!arq) {
     return false;
   }
-  
-  
+    
   String conf = arq.readStringUntil('\n');
-  conf.toCharArray(buffer, 255);
+
+  for (int i=0; i<255; i++)
+    buffer[i] = '\0';
+    
+  if (conf.length() > 0) {
+    conf.toCharArray(buffer, 255);
+  }
   
   arq.close();
-   
-  return true; 
+  return true;
 }
+
 
 int FSConfig::getNome(char *buff) {
 
@@ -67,30 +94,76 @@ int FSConfig::getCarga(char *buff, int number) {
 
 
 void FSConfig::close() {
-
- // SPIFFS.end();
+ 
+  SPIFFS.end();
 }
 
 
 void FSConfig::getConfig(char *buff) {
 
-  File f = SPIFFS.open(filepath, "r");
+  /*File f = SPIFFS.open(filepath, "r");
   String conf = f.readStringUntil('\n');
 
+  printer->printf("conf lido de spiffs, sem nl no printf: %s", conf.c_str());
+  
   for (int i=0; i<255; i++)
     buff[i] = '\0';
-    
-  conf.toCharArray(buff, 255);
-  f.close(); 
+
+  if (conf.length() > 0) {
+    conf.toCharArray(buff, 255);
+  }
+  
+  f.close();*/
+
+  int len = strlen(buffer);
+
+  for (int i=0; i<len; i++)
+    buff[i] = buffer[i];
+
+  //printer->printf("buff sem nul: %s ---\n", buff);
+
+  buff[len] = '\0';
+
+  //printer->printf("buff com nul: %s ---\n", buff);
+
+  
+  
+  /*char *p = buffer;
+  int buflen = 0;
+
+  while (*p++ != '\n')
+    buflen++;
+
+  for (int i=0; i<buflen; i++) {
+    buff[i] = buffer[i];    
+  }
+
+  buff[buflen] = '\0';*/
+  
 }
 
 void FSConfig::setConfig(const char *config) {
 
+  //printer->printf("entrou em setconfig\n");
+  
   File f = SPIFFS.open(filepath, "w");
-  f.print(config);
+
+  //printer->printf("entrou em setconfig.. param: %s\n", config);
+  
+  String str = String(config);
+  //printer->printf("sem newline (String): %s", str.c_str());
+  
+  str.concat("\n");
+  //printer->printf("sem newline (String): %s", str.c_str());
+
+  //printer->printf("aqui nova linha");
+  f.print(str.c_str());
+
+  //printer->printf("salvou setinfo com newline em spiffs\n");
+  
   f.close();
 
-  init();
+  //updateConf();
 }
 
 
